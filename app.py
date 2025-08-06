@@ -15,10 +15,10 @@ fahrzeug = st.text_input("🚙 Fahrzeug", "Traktor")
 ort = st.text_input("🌍 Ort", "auf dem Feld")
 stil = st.text_input("🎨 Stil", "reimend, kindgerecht")
 alter = st.text_input("👧 Altersempfehlung", "4–6 Jahre")
-api_key = st.text_input("🔑 OpenAI API Key", type="password")
+if st.button("🎨 Seite generieren"):
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-if st.button("🎨 Seite generieren") and api_key:
-    openai.api_key = api_key
+
 
     # Prompt für GPT-4o
     prompt_text = (
