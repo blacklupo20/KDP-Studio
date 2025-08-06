@@ -1,87 +1,81 @@
 import streamlit as st
-import openai
 from openai import OpenAI
+import openai
 from fpdf import FPDF
 from PIL import Image
 import requests
 from io import BytesIO
-import os
 
-# Streamlit App
 st.set_page_config(page_title="KDP-Studio", layout="centered")
-st.title("🚗 KDP-Studio – Ausmalbuch-Seitengenerator")
 
-# Eingabefelder
-fahrzeug = st.text_input("🚙 Fahrzeug", "Traktor")
-ort = st.text_input("🌍 Ort", "auf dem Feld")
-stil = st.text_input("🎨 Stil", "reimend, kindgerecht")
-alter = st.text_input("👧 Altersempfehlung", "4–6 Jahre")
+st.title("🎨 KDP-Studio – Ausmalbuch-Seitengenerator")
+st.markdown("Erstelle in Sekunden deine individuelle Ausmalbuchseite für Amazon KDP.")
+
+vehicle = st.text_input("🚗 Fahrzeugtyp", placeholder="z. B. Feuerwehr, Traktor...")
+location = st.text_input("📍 Ort", placeholder="z. B. auf dem Bauernhof, in der Stadt...")
+style = st.text_input("🎨 Stil / Ton", placeholder="z. B. reimend, witzig, lehrreich...")
+age = st.text_input("👶 Zielalter", placeholder="z. B. 3–6 Jahre...")
+
 if st.button("🎨 Seite generieren"):
     openai.api_key = st.secrets["OPENAI_API_KEY"]
+    client = OpenAI(api_key=openai.api_key)
 
-
-
-    # Prompt für GPT-4o
+    # Prompt vorbereiten
     prompt_text = (
-        f"Schreibe eine kurze Kindergeschichte (ca. 300–400 Wörter) "
-        f"für Kinder im Alter von {alter}. Die Hauptfigur ist ein Fahrzeug: {fahrzeug}. "
-        f"Die Geschichte spielt {ort} und soll {stil} geschrieben sein. "
-        f"Bitte mit Titel. Kindgerecht, einfach, liebevoll."
+        f"Schreibe eine kurze, kindgerechte Geschichte über ein {vehicle} {location}, "
+        f"im Stil: {style}. Zielgruppe: Kinder im Alter von {age} Jahren. "
+        "Die Geschichte soll einfach verständlich, fantasievoll und pädagogisch wertvoll sein."
     )
 
-from openai import OpenAI
+    with st.spinner("✍️ Schreibe Geschichte..."):
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "Du bist ein erfahrener Kinderbuchautor."},
+                {"role": "user", "content": prompt_text}
+            ],
+            temperature=0.8
+        )
+        story = response.choices[0].message.content.strip()
 
-client = OpenAI(api_key=openai.api_key)
-
-with st.spinner("✍️ Schreibe Geschichte..."):
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "Du bist ein Kinderbuchautor."},
-            {"role": "user", "content": prompt_text}
-        ],
-        temperature=0.8
-    )
-    story = response.choices[0].message.content
-
-
-    # Prompt für DALL·E
-    dalle_prompt = (
-        f"A black and white cartoon-style coloring page of a {fahrzeug} {ort}, "
-        f"with clear outlines, no background clutter, no text, no color. Kid-friendly."
-    )
-
-    with st.spinner("🖼️ Erzeuge Ausmalbild..."):
-        image_response = openai.Image.create(
+    with st.spinner("🖼️ Generiere Ausmalbild..."):
+        dalle_prompt = f"Ein {vehicle} {location} als Ausmalbild, einfache schwarze Linien, kindgerecht, zentriert"
+        image_response = client.images.generate(
+            model="dall-e-3",
             prompt=dalle_prompt,
-            n=1,
             size="1024x1024",
-            response_format="url"
+            quality="standard",
+            n=1
         )
-        image_url = image_response["data"][0]["url"]
+        image_url = image_response.data[0].url
         image = Image.open(BytesIO(requests.get(image_url).content))
-        st.image(image, caption="Dein Ausmalbild", use_column_width=True)
 
-    # PDF-Erstellung
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.multi_cell(0, 10, story)
-    
-    # Bild zwischenspeichern
-    image_path = "temp_image.png"
-    image.save(image_path)
+    # PDF erzeugen
+    with st.spinner("📄 Erstelle PDF..."):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 18)
+        pdf.cell(0, 10, f"{vehicle} {location}", ln=True, align='C')
+        
+        # Bild
+        image_path = "/tmp/image.png"
+        image.save(image_path)
+        pdf.image(image_path, x=30, y=30, w=150)
 
-    # Bild in PDF einfügen
-    pdf.image(image_path, x=30, y=None, w=150)
-    pdf.output("kdp_page.pdf")
-    os.remove(image_path)
+        # Text
+        pdf.set_y(180)
+        pdf.set_font("Arial", size=12)
+        for line in story.split("\n"):
+            pdf.multi_cell(0, 10, line)
 
-    with open("kdp_page.pdf", "rb") as f:
-        st.download_button(
-            label="📄 PDF herunterladen",
-            data=f,
-            file_name="kdp_ausmalseite.pdf",
-            mime="application/pdf"
-        )
+        pdf_path = "/tmp/kdp_page.pdf"
+        pdf.output(pdf_path)
+
+    # Ausgabe
+    st.success("✅ Seite erstellt!")
+    st.image(image, caption="🖼️ Dein Ausmalbild")
+    st.markdown("📘 **Kindergeschichte:**")
+    st.write(story)
+    with open(pdf_path, "rb") as f:
+        st.download_button("⬇️ PDF herunterladen", f, file_name="kdp_ausmalbuchseite.pdf")
+
