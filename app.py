@@ -63,26 +63,28 @@ if st.button("🎨 Seite generieren"):
         pdf.set_font("Arial", 'B', 18)
         pdf.cell(0, 10, f"{vehicle} {location}", ln=True, align='C')
         
-        # Bild
+        # Bild speichern
         image_path = "/tmp/image.png"
         image.save(image_path)
         pdf.image(image_path, x=30, y=30, w=150)
 
-        # Text
+        # Unicode-bereinigten Text schreiben
+        clean_story = remove_non_latin(story)
         pdf.set_y(180)
         pdf.set_font("Arial", size=12)
-clean_story = remove_non_latin(story)
-for line in clean_story.split("\n"):
-    pdf.multi_cell(0, 10, line)
+        for line in clean_story.split("\n"):
+            pdf.multi_cell(0, 10, line)
 
-pdf_path = "/tmp/kdp_page.pdf"
-pdf.output(pdf_path)
+        # PDF speichern
+        pdf_path = "/tmp/kdp_page.pdf"
+        pdf.output(pdf_path)
 
-    # Ausgabe
+    # Ergebnis anzeigen (Achtung: auf gleicher Ebene wie "with", nicht eingerückt!)
     st.success("✅ Seite erstellt!")
     st.image(image, caption="🖼️ Dein Ausmalbild")
     st.markdown("📘 **Kindergeschichte:**")
     st.write(story)
     with open(pdf_path, "rb") as f:
         st.download_button("⬇️ PDF herunterladen", f, file_name="kdp_ausmalbuchseite.pdf")
+
 
