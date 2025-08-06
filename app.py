@@ -6,6 +6,12 @@ from PIL import Image
 import requests
 from io import BytesIO
 
+import unicodedata
+
+def remove_non_latin(text):
+    return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('ASCII')
+
+
 st.set_page_config(page_title="KDP-Studio", layout="centered")
 
 st.title("🎨 KDP-Studio – Ausmalbuch-Seitengenerator")
@@ -65,8 +71,10 @@ if st.button("🎨 Seite generieren"):
         # Text
         pdf.set_y(180)
         pdf.set_font("Arial", size=12)
-        for line in story.split("\n"):
-            pdf.multi_cell(0, 10, line)
+clean_story = remove_non_latin(story)
+for line in clean_story.split("\n"):
+    pdf.multi_cell(0, 10, line)
+
 
         pdf_path = "/tmp/kdp_page.pdf"
         pdf.output(pdf_path)
