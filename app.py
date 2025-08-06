@@ -1,5 +1,6 @@
 import streamlit as st
 import openai
+from openai import OpenAI
 from fpdf import FPDF
 from PIL import Image
 import requests
@@ -28,16 +29,21 @@ if st.button("🎨 Seite generieren"):
         f"Bitte mit Titel. Kindgerecht, einfach, liebevoll."
     )
 
-    with st.spinner("✍️ Schreibe Geschichte..."):
-        gpt_response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Du bist ein Kinderbuchautor."},
-                {"role": "user", "content": prompt_text}
-            ],
-            temperature=0.8
-        )
-        story = gpt_response["choices"][0]["message"]["content"]
+from openai import OpenAI
+
+client = OpenAI(api_key=openai.api_key)
+
+with st.spinner("✍️ Schreibe Geschichte..."):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Du bist ein Kinderbuchautor."},
+            {"role": "user", "content": prompt_text}
+        ],
+        temperature=0.8
+    )
+    story = response.choices[0].message.content
+
 
     # Prompt für DALL·E
     dalle_prompt = (
