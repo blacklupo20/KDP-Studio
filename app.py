@@ -75,9 +75,8 @@ clean_story = remove_non_latin(story)
 for line in clean_story.split("\n"):
     pdf.multi_cell(0, 10, line)
 
-
-        pdf_path = "/tmp/kdp_page.pdf"
-        pdf.output(pdf_path)
+pdf_path = "/tmp/kdp_page.pdf"
+pdf.output(pdf_path)
 
     # Ausgabe
     st.success("✅ Seite erstellt!")
